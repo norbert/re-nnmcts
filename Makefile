@@ -7,13 +7,11 @@ BOUNDARY ?= 86400
 words_files := $(foreach partition,$(PARTITIONS),$(addprefix data/words.,$(addsuffix .tsv,$(partition))))
 matches_files := $(foreach klass,positive negative,$(foreach partition,$(PARTITIONS),$(addprefix data/statuses-matches.$(klass).,$(addsuffix .tsv,$(partition)))))
 timestamps_files := $(foreach partition,$(PARTITIONS),$(addprefix data/statuses-timestamps.,$(addsuffix .tsv,$(partition))))
-dist_files := references trends-positive words-negative
-dist_files := $(foreach file,$(dist_files),$(addprefix data/,$(addsuffix .dist.tsv,$(file))))
+references_file := data/references.tsv
+dist_files := trends-positive words-negative
+dist_files := $(foreach file,$(dist_files),$(addprefix data/,$(addsuffix .dist.tsv,$(file)))) $(references_file)
 
 all: dist
-words: $(words_files)
-matches: $(matches_files)
-timestamps: $(timestamps_files)
 dist: $(dist_files)
 
 data/statuses-tokens.%.tsv.bz2: data/statuses.%.json.bz2
@@ -49,20 +47,17 @@ data/timeseries.$(DIVISOR).tsv: data/timeseries.positive.$(RESOLUTION).tsv data/
 
 data/references.tsv: data/timeseries.$(DIVISOR).tsv data/trends-positive.tsv data/words-negative.dist.tsv
 	cat $< | python write-references.py -d $(DIVISOR) $(MIN) $(MAX) $(RESOLUTION) $(wordlist 2,3,$^) > $@
-data/references.dist.tsv: data/references.tsv
-	cat $< | cut -f 2- > $@
 
 clean:
 	-rm -rf -- \
 		data/statuses-timestamps.*.tsv \
 		data/trends-cut.tsv data/trends-positive.tsv \
 		data/words.*.tsv data/words-negative.tsv \
-		data/timeseries.*.tsv \
-		data/references.tsv
+		data/timeseries.*.tsv
 distclean:
 	-rm -rf -- \
 		$(dist_files)
 
-.PHONY: all clean distclean
+.PHONY: all dist clean distclean
 .DELETE_ON_ERROR:
 .PRECIOUS: data/statuses-tokens.%.tsv.bz2 $(matches_files)
